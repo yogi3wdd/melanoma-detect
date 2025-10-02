@@ -7,7 +7,7 @@ import io
 app = FastAPI()
 
 # Load model
-model = tf.keras.models.load_model("model.h5")
+model = tf.keras.models.load_model("melanoma_detect.h5")
 
 # Label sesuai dataset (contoh: 0 = Normal, 1 = Melanoma)
 class_names = ["Normal", "Melanoma"]
