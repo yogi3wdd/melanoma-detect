@@ -1,32 +1,32 @@
-from fastapi import FastAPI, UploadFile
+from flask import Flask, request, jsonify
 import tensorflow as tf
-from PIL import Image
 import numpy as np
+from PIL import Image
 import io
 
-app = FastAPI()
+# Init Flask
+app = Flask(__name__)
 
-# Load model
+# Load model H5
 model = tf.keras.models.load_model("melanoma_detect.h5")
 
-# Label sesuai dataset (contoh: 0 = Normal, 1 = Melanoma)
-class_names = ["Normal", "Melanoma"]
-
-@app.post("/predict")
-async def predict(file: UploadFile):
-    contents = await file.read()
-    image = Image.open(io.BytesIO(contents)).convert("RGB").resize((224, 224))
+# Endpoint prediksi
+@app.route("/predict", methods=["POST"])
+def predict():
+    if "image" not in request.files:
+        return jsonify({"error": "No image uploaded"}), 400
     
-    # Preprocess
-    img_array = np.array(image).astype(np.float32) / 255.0
+    file = request.files["image"].read()
+    image = Image.open(io.BytesIO(file)).resize((224,224))  # sesuaikan ukuran input model
+    img_array = np.array(image) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    # Prediksi
-    prediction = model.predict(img_array)[0]  # ambil array hasil prediksi
-    pred_idx = np.argmax(prediction)          # ambil kelas dengan probabilitas tertinggi
-    confidence = float(np.max(prediction))    # tingkat akurasi (probabilitas)
+    pred = model.predict(img_array)[0][0]
+    label = "Melanoma" if pred > 0.5 else "Non-Melanoma"
+    acc = float(pred if pred > 0.5 else (1 - pred))
 
-    return {
-        "hasil": class_names[pred_idx],
-        "akurasi": round(confidence * 100, 2)  # persen
-    }
+    return jsonify({"result": label, "accuracy": acc})
+
+# Run
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=7860)
